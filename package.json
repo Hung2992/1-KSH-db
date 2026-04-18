@@ -1,0 +1,10 @@
+{
+  "name": "zoligpt-omega-admin-core",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/api/server.js",
+    "test": "node --test"
+  }
+}

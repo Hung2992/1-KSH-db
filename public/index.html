@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="hu">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ZoliGPT Omega Admin Core</title>
+    <style>
+      :root {
+        --bg: #0b1020;
+        --card: #141b33;
+        --soft: #1d2748;
+        --text: #ebf2ff;
+        --muted: #9fb0d3;
+        --ok: #1ecb7b;
+        --warn: #ffb020;
+        --danger: #ff5d73;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+        background: radial-gradient(circle at top, #111936 0%, var(--bg) 55%);
+        color: var(--text);
+      }
+      .wrap { max-width: 1180px; margin: 0 auto; padding: 24px; }
+      h1 { margin: 0 0 10px; font-size: 1.8rem; }
+      p { color: var(--muted); }
+      .grid { display: grid; grid-template-columns: repeat(4, minmax(180px,1fr)); gap: 12px; margin: 20px 0; }
+      .card { background: var(--card); border: 1px solid #29345f; border-radius: 12px; padding: 14px; }
+      .label { font-size: .85rem; color: var(--muted); }
+      .value { font-size: 1.3rem; font-weight: 700; margin-top: 6px; }
+      .section { margin-top: 18px; background: var(--card); border: 1px solid #29345f; border-radius: 12px; padding: 16px; }
+      .row { display: grid; gap: 10px; grid-template-columns: repeat(4, 1fr); }
+      select, textarea, button {
+        width: 100%; border-radius: 10px; border: 1px solid #34477f; background: var(--soft); color: var(--text);
+        padding: 10px; font-size: .95rem;
+      }
+      textarea { min-height: 100px; resize: vertical; }
+      button { cursor: pointer; background: linear-gradient(45deg, #2f62ff, #6e4dff); border: none; font-weight: 600; }
+      pre { background: #0b122b; border: 1px solid #2d3f73; border-radius: 10px; padding: 12px; overflow: auto; }
+      .pill { display: inline-block; border-radius: 999px; padding: 4px 10px; font-size: .82rem; }
+      .ok { background: rgba(30,203,123,.2); color: var(--ok); }
+      .warn { background: rgba(255,176,32,.2); color: var(--warn); }
+      .danger { background: rgba(255,93,115,.2); color: var(--danger); }
+      @media (max-width: 900px) { .grid, .row { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <h1>ZoliGPT Omega Admin Core — Command Center</h1>
+      <p>Finance + Security + Health + Energy egy dashboardon, központi Omega Brain döntési réteggel.</p>
+
+      <div class="grid">
+        <div class="card"><div class="label">Global Score</div><div class="value" id="globalScore">-</div></div>
+        <div class="card"><div class="label">Global Decision</div><div class="value" id="globalDecision">-</div></div>
+        <div class="card"><div class="label">Primary Command</div><div class="value" id="primaryCommand">-</div></div>
+        <div class="card"><div class="label">API Health</div><div class="value" id="apiHealth">Checking...</div></div>
+      </div>
+
+
+      <div class="section">
+        <h3>Gyors linkek</h3>
+        <p>Használd ezeket a linkeket megosztáshoz és gyors teszteléshez.</p>
+        <pre id="linksOut">Loading links...</pre>
+      </div>
+
+      <div class="section">
+        <h3>Module Event Evaluator</h3>
+        <div class="row">
+          <select id="module">
+            <option value="finance">Finance</option>
+            <option value="security">Security</option>
+            <option value="health">Health</option>
+            <option value="energy">Energy</option>
+          </select>
+          <div style="grid-column: span 3">
+            <textarea id="signals">{
+  "amountAnomaly": true,
+  "newDevice": true
+}</textarea>
+          </div>
+        </div>
+        <div style="margin-top:10px"><button id="runModule">Evaluate Module</button></div>
+        <pre id="moduleOut">No result yet.</pre>
+      </div>
+
+      <div class="section">
+        <h3>Omega Brain Aggregator</h3>
+        <p>Adj meg több modult egyszerre, és a rendszer kiszámolja a globális prioritást.</p>
+        <textarea id="events">[
+  {"module":"finance","signals":{"amountAnomaly":true,"newDevice":true,"suspiciousCountry":true}},
+  {"module":"security","signals":{"newIp":true,"adminAccount":true}},
+  {"module":"health","signals":{"sleepDeficit":true,"poorRecovery":true}},
+  {"module":"energy","signals":{"peakUsage":true,"wastefulDevice":true}}
+]</textarea>
+        <div style="margin-top:10px"><button id="runOmega">Evaluate Omega Brain</button></div>
+        <pre id="omegaOut">No result yet.</pre>
+      </div>
+
+      <div class="section">
+        <h3>AI Decisions Log</h3>
+        <p>Legutóbbi döntések listája a Decision Store-ból.</p>
+        <div style="margin-bottom:10px"><button id="refreshLogs">Refresh Logs</button></div>
+        <pre id="logsOut">No logs yet.</pre>
+      </div>
+
+    </div>
+
+    <script>
+      const byId = (id) => document.getElementById(id);
+
+      function decisionClass(decision) {
+        if (!decision) return 'warn';
+        if (['approve', 'allow', 'normal', 'optimal'].includes(decision)) return 'ok';
+        if (['review', 'watch', 'monitor', 'step_up_auth', 'optimize'].includes(decision)) return 'warn';
+        return 'danger';
+      }
+
+
+      async function loadLinks() {
+        try {
+          const res = await fetch('/links');
+          const data = await res.json();
+          byId('linksOut').textContent = JSON.stringify(data, null, 2);
+        } catch {
+          byId('linksOut').textContent = 'Link endpoint nem elérhető.';
+        }
+      }
+
+      async function checkHealth() {
+        try {
+          const res = await fetch('/health');
+          const data = await res.json();
+          byId('apiHealth').innerHTML = data.ok ? '<span class="pill ok">ONLINE</span>' : '<span class="pill danger">ERROR</span>';
+        } catch {
+          byId('apiHealth').innerHTML = '<span class="pill danger">OFFLINE</span>';
+        }
+      }
+
+      byId('runModule').addEventListener('click', async () => {
+        try {
+          const module = byId('module').value;
+          const signals = JSON.parse(byId('signals').value);
+          const res = await fetch(`/events/${module}`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ signals })
+          });
+          const data = await res.json();
+          byId('moduleOut').textContent = JSON.stringify(data, null, 2);
+        } catch (e) {
+          byId('moduleOut').textContent = `JSON hiba: ${e.message}`;
+        }
+      });
+
+      byId('runOmega').addEventListener('click', async () => {
+        try {
+          const events = JSON.parse(byId('events').value);
+          const res = await fetch('/omega/evaluate', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ events })
+          });
+          const data = await res.json();
+          byId('omegaOut').textContent = JSON.stringify(data, null, 2);
+          byId('globalScore').textContent = data.score ?? '-';
+          const decision = data.decision ?? '-';
+          byId('globalDecision').innerHTML = `<span class="pill ${decisionClass(decision)}">${decision}</span>`;
+          byId('primaryCommand').textContent = data.commands?.[0] ?? '-';
+        } catch (e) {
+          byId('omegaOut').textContent = `JSON hiba: ${e.message}`;
+        }
+      });
+
+
+      async function loadDecisionLogs() {
+        try {
+          const res = await fetch('/decisions?limit=10');
+          const data = await res.json();
+          byId('logsOut').textContent = JSON.stringify(data, null, 2);
+        } catch {
+          byId('logsOut').textContent = 'Decision log endpoint nem elérhető.';
+        }
+      }
+
+      byId('refreshLogs').addEventListener('click', loadDecisionLogs);
+
+      checkHealth();
+      loadLinks();
+      loadDecisionLogs();
+    </script>
+  </body>
+</html>
